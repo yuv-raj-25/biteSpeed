@@ -4,7 +4,13 @@ let pool: Pool;
 
 const getPool = (): Pool => {
   if (!pool) {
-    const dbUrl = new URL(process.env.DATABASE_URL!);
+    if (!process.env.DATABASE_URL) {
+      console.warn("⚠️ DATABASE_URL environment variable is not set.");
+      // Render sometimes runs `npm start` or similar during build without env vars.
+      // We throw inside the query execution rather than at pool creation time.
+      return null as any; 
+    }
+    const dbUrl = new URL(process.env.DATABASE_URL);
     pool = new Pool({
       host: dbUrl.hostname,
       port: Number(dbUrl.port) || 5432,
@@ -16,11 +22,18 @@ const getPool = (): Pool => {
   return pool;
 };
 
-export const query = (text: string, params?: unknown[]): Promise<QueryResult> => {
-  return getPool().query(text, params);
+export const query = async (text: string, params?: unknown[]): Promise<QueryResult> => {
+  const p = getPool();
+  if (!p) throw new Error("Database not connected (DATABASE_URL missing)");
+  return p.query(text, params);
 };
 
 export const initDb = async (): Promise<void> => {
+  const p = getPool();
+  if (!p) {
+    console.warn("⚠️ Skipping table creation because DATABASE_URL is not set.");
+    return;
+  }
   const createTableQuery = `
     CREATE TABLE IF NOT EXISTS contacts (
       id              SERIAL PRIMARY KEY,

@@ -37,16 +37,19 @@ At least one of `email` or `phoneNumber` must be provided.
 - **Runtime**: Node.js + TypeScript
 - **Framework**: Express.js
 - **Database**: PostgreSQL (via `pg`)
+- **Validation**: Zod
+- **Containerisation**: Docker + Docker Compose
 
 ## Project Structure
 
 ```
 src/
-├── config/db.ts                 # Database pool & table init
+├── config/db.ts                        # Database pool, indexes & table init
 ├── controllers/identify.controller.ts  # Request validation & response
-├── routes/identify.route.ts     # POST /identify route
-├── services/identity.service.ts # Core identity reconciliation logic
-└── types/contact.types.ts       # TypeScript interfaces
+├── routes/identify.route.ts            # POST /identify route
+├── services/identity.service.ts        # Core identity reconciliation logic
+├── types/contact.types.ts              # TypeScript interfaces
+└── validators/identify.validator.ts    # Zod request schema
 ```
 
 ## How It Works
@@ -55,39 +58,92 @@ src/
 2. **Existing customer, new info** — Creates a `secondary` contact linked to the primary.
 3. **Two separate primaries linked** — The older one stays `primary`; the newer one is demoted to `secondary` and all its secondaries are re-linked.
 
-## Local Development
+---
 
-### Prerequisites
-- Node.js ≥ 18
-- Docker (for PostgreSQL)
+## Getting Started
 
-### Setup
+### Option 1: Docker (Recommended)
+
+Run the entire stack (app + PostgreSQL) with a single command — no local installs needed.
+
+**Prerequisites**: Docker & Docker Compose
 
 ```bash
-# Install dependencies
-npm install
+# Build and start everything
+docker compose up --build
 
-# Start PostgreSQL via Docker
-docker compose up -d
-
-# Create .env file
-cp .env.example .env
-# Edit DATABASE_URL if needed (default: postgresql://postgres:postgres@localhost:5431/bitespeed)
-
-# Start dev server (hot reload)
-npm run dev
+# App will be available at http://localhost:5000
+# Postgres at localhost:5431
 ```
 
-### Build & Run (production)
+To stop:
+```bash
+docker compose down
+```
+
+To stop **and** wipe the database:
+```bash
+docker compose down -v
+```
+
+---
+
+### Option 2: Local (npm)
+
+Run the app directly on your machine with hot-reload for development.
+
+**Prerequisites**: Node.js ≥ 18, Docker (for PostgreSQL only)
+
+```bash
+# 1. Install dependencies
+npm install
+
+# 2. Start PostgreSQL via Docker
+docker compose up postgres -d
+
+# 3. Create .env file
+cp .env.example .env
+# Default: DATABASE_URL=postgresql://postgres:postgres@localhost:5431/bitespeed
+
+# 4. Start dev server (hot reload)
+npm run dev
+# App will be available at http://localhost:3000
+```
+
+### Build for Production (local)
 
 ```bash
 npm run build
 npm start
 ```
 
+---
+
 ## Environment Variables
 
-| Variable | Description | Example |
+| Variable | Description | Default |
 |----------|-------------|---------|
 | `DATABASE_URL` | PostgreSQL connection string | `postgresql://postgres:postgres@localhost:5431/bitespeed` |
-| `PORT` | Server port (default: 3000) | `3000` |
+| `PORT` | Server port | `3000` (local) / `5000` (Docker) |
+
+## API Examples
+
+```bash
+# Create a new contact
+curl -X POST http://localhost:5000/identify \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"lorraine@hillvalley.edu","phoneNumber":"123456"}'
+
+# Link with new email
+curl -X POST http://localhost:5000/identify \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"mcfly@hillvalley.edu","phoneNumber":"123456"}'
+
+# Query by phone only
+curl -X POST http://localhost:5000/identify \
+  -H 'Content-Type: application/json' \
+  -d '{"phoneNumber":"123456"}'
+
+# Health check
+curl http://localhost:5000/health
+```

@@ -147,3 +147,14 @@ curl -X POST http://localhost:5000/identify \
 # Health check
 curl http://localhost:5000/health
 ```
+
+---
+
+## Future Improvements
+
+For large-scale identity resolution in an enterprise setting, the following architectural upgrades would be considered:
+
+- **Distributed Identity Graph**: Sharding contact data across multiple database nodes based on a consistent hashing ring.
+- **Caching Layer (Redis)**: Caching resolved primary-secondary graphs in Redis to avoid re-computing identity trees for frequent shoppers.
+- **Event-Driven Identity Merging**: Emitting identity-merge events (e.g., via Kafka) to allow downstream microservices (marketing, analytics) to asynchronously update their references rather than doing heavy synchronised writes.
+- **Graph Database**: Migrating from PostgreSQL to a native Graph DB (like Neo4j or Amazon Neptune) when the depth of secondary-to-primary and secondary-to-secondary relations grows too large for efficient SQL recursive queries.
